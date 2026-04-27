@@ -197,9 +197,6 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
   }
 
   async function onDragEnd(event: DragEndEvent) {
-    const currentActiveTask = activeTask
-    const originalColumnId = dragStartColumnId
-    
     setActiveColumn(null)
     setActiveTask(null)
     setDragStartColumnId(null)
@@ -323,7 +320,7 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
                 <Column
                   key={col.id}
                   column={col}
-                  tasks={filteredTasks.filter((t) => t.column_id === col.id)}
+                  tasks={filteredTasks.filter((t) => t.column_id === col.id).sort(sortTasks)}
                   isReadOnly={isReadOnly}
                   onTaskClick={(task: TaskType) => setSelectedTask(task)}
                   onTaskAdd={(newTask: TaskType) => setTasks((prev) => [...prev, newTask])}
