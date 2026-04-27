@@ -151,6 +151,8 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
     if (isActiveTask && isOverColumn) {
       setTasks((tasks) => {
         const activeIndex = tasks.findIndex((t) => t.id === activeId.toString())
+        if (tasks[activeIndex].column_id === overId.toString()) return tasks
+        
         const updatedTasks = [...tasks]
         updatedTasks[activeIndex] = {
           ...updatedTasks[activeIndex],
@@ -208,8 +210,11 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
         const activeIndex = currentTasks.findIndex((t) => t.id === activeId.toString())
         const activeTask = currentTasks[activeIndex]
         
-        // Görevin bulunduğu sütundaki tüm görevleri (sıralı şekilde) al
-        const columnTasks = currentTasks.filter(t => t.column_id === activeTask.column_id)
+        // KRİTİK: Sütundaki görevleri MUTLAKA sıralayarak almalıyız ki doğru komşuları bulalım
+        const columnTasks = currentTasks
+          .filter(t => t.column_id === activeTask.column_id)
+          .sort((a, b) => a.order - b.order)
+        
         const taskInColIndex = columnTasks.findIndex(t => t.id === activeId.toString())
 
         // Spaced Integer Hesaplaması
