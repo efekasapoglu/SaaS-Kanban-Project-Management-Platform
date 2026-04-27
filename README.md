@@ -51,7 +51,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 npm run dev
 ```
 
-Artık [http://localhost:3000](http://localhost:3000) adresinden uygulamaya erişebilirsiniz.
-
 ---
 *Geliştiren: FalconEfo*
+
+🔗 **Canlı Proje:** [saa-s-kanban-project-management-pla.vercel.app](https://saa-s-kanban-project-management-pla.vercel.app/)
+🔗 **Kaynak Kodlar:** [GitHub Repository](https://github.com/efekasapoglu/SaaS-Kanban-Project-Management-Platform)
