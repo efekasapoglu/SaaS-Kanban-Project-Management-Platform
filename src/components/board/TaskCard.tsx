@@ -54,7 +54,7 @@ export function TaskCard({ task, isReadOnly, isOverlay, onClick }: Props) {
       `}
     >
       {/* Sol Hover Circle (Checkmark) */}
-      {!isReadOnly && (
+      {!isReadOnly && !isDragging && !isOverlay && (
         <div 
           onClick={(e) => {
             e.stopPropagation()
