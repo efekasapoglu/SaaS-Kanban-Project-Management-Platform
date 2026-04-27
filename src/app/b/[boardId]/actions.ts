@@ -5,22 +5,34 @@ import { revalidatePath } from 'next/cache'
 import { TaskUpdate, Activity } from '@/types'
 
 // Sütun sırasını günceller
-export async function updateColumnOrder(columnId: string, newOrder: number) {
+export async function updateColumnOrder(boardId: string, columnId: string, newOrder: number) {
   const supabase = await createClient()
-  await supabase.from('columns').update({ order: newOrder }).eq('id', columnId)
+  const { error } = await supabase.from('columns').update({ order: newOrder }).eq('id', columnId)
+  
+  if (error) {
+    console.error('Update column order error:', error)
+  } else {
+    revalidatePath(`/b/${boardId}`)
+  }
 }
 
 // Görev sırasını ve sütununu günceller (Sürükle-bırak ile)
-export async function updateTaskOrder(taskId: string, newColumnId: string, newOrder: number) {
+export async function updateTaskOrder(boardId: string, taskId: string, newColumnId: string, newOrder: number) {
   const supabase = await createClient()
   
   // Önce eski görev verisini al (hangi sütundan geldiğini loglamak için)
   const { data: oldTask } = await supabase.from('tasks').select('column_id').eq('id', taskId).single()
   
-  await supabase.from('tasks').update({ 
+  const { error } = await supabase.from('tasks').update({ 
     column_id: newColumnId, 
     order: newOrder 
   }).eq('id', taskId)
+
+  if (error) {
+    console.error('Update task order error:', error)
+  } else {
+    revalidatePath(`/b/${boardId}`)
+  }
 
   // Eğer sütun değiştiyse aktivite kaydı oluştur
   if (oldTask && oldTask.column_id !== newColumnId) {

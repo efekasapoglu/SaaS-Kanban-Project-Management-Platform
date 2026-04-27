@@ -196,7 +196,7 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
         }
         
         // Arka planda DB'yi güncelle
-        updateColumnOrder(activeId.toString(), newOrder)
+        updateColumnOrder(boardId, activeId.toString(), newOrder)
         
         return newCols
       })
@@ -229,7 +229,7 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
         }
 
         // Arka planda DB'yi güncelle
-        updateTaskOrder(activeId.toString(), activeTask.column_id, newOrder)
+        updateTaskOrder(boardId, activeId.toString(), activeTask.column_id, newOrder)
 
         return newTasks
       })
