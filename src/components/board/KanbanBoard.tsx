@@ -61,6 +61,9 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
   const [activeTask, setActiveTask] = useState<TaskType | null>(null)
   const [selectedTask, setSelectedTask] = useState<TaskType | null>(null)
   
+  // Sürükleme başladığında orijinal sütunu takip et (DB güncellemesi için)
+  const [dragStartColumnId, setDragStartColumnId] = useState<string | null>(null)
+  
   const [isAddingCol, setIsAddingCol] = useState(false)
   const [newColTitle, setNewColTitle] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -119,14 +122,16 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
   if (!isMounted) return null // Dnd-kit SSR Hydration hatasını engellemek için, hooklardan SONRA olmalı.
 
   function onDragStart(event: DragStartEvent) {
-    if (isReadOnly || searchQuery.trim()) return // Arama varken dnd'yi geçici olarak devre dışı bırakmak iyi bir pratiktir
+    if (isReadOnly || searchQuery.trim()) return
     const { active } = event
     if (active.data.current?.type === 'Column') {
       setActiveColumn(active.data.current.column)
       return
     }
     if (active.data.current?.type === 'Task') {
-      setActiveTask(active.data.current.task)
+      const task = active.data.current.task as TaskType
+      setActiveTask(task)
+      setDragStartColumnId(task.column_id) // Orijinal sütunu kaydet
       return
     }
   }
@@ -159,18 +164,6 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
             ...updatedTasks[activeIndex],
             column_id: tasks[overIndex].column_id
           }
-          
-          // Farklı sütuna geçerken KESİN KURAL: Öncelik sınırını geçemez
-          const weightA = getPriorityWeight(tasks[activeIndex].priority)
-          const weightO = getPriorityWeight(tasks[overIndex].priority)
-          
-          if (weightA < weightO && activeIndex > overIndex) {
-              return updatedTasks // Orta, Yükseğin üstüne çıkamaz
-          }
-          if (weightA > weightO && activeIndex < overIndex) {
-              return updatedTasks // Yüksek, Ortanın altına inemez
-          }
-          
           return arrayMove(updatedTasks, activeIndex, overIndex)
         }
 
@@ -179,8 +172,6 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
         const weightO = getPriorityWeight(tasks[overIndex].priority)
         
         if (weightA !== weightO) {
-          // Eğer öncelikler farklıysa, yer değiştirmelerine KESİNLİKLE izin verme!
-          // Bu tam olarak "Orta, Yükseğin üstüne çıkamaz" kuralıdır.
           return tasks
         }
 
@@ -200,27 +191,31 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
           ...updatedTasks[activeIndex],
           column_id: overId.toString()
         }
-        return arrayMove(updatedTasks, activeIndex, activeIndex)
+        return updatedTasks
       })
     }
   }
 
   async function onDragEnd(event: DragEndEvent) {
+    const currentActiveTask = activeTask
+    const originalColumnId = dragStartColumnId
+    
     setActiveColumn(null)
     setActiveTask(null)
+    setDragStartColumnId(null)
 
     if (isReadOnly || searchQuery.trim()) return
     const { active, over } = event
     if (!over) return
 
     const activeId = active.id
-    const overId = over.id
-
-    if (activeId === overId) return
 
     // SÜTUN SÜRÜKLEME MANTIĞI
     const isActiveColumn = active.data.current?.type === 'Column'
     if (isActiveColumn) {
+      const overId = over.id
+      if (activeId === overId) return
+      
       setColumns((columns) => {
         const activeIndex = columns.findIndex((col) => col.id === activeId.toString())
         const overIndex = columns.findIndex((col) => col.id === overId.toString())
@@ -250,30 +245,27 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
     if (isActiveTask) {
       setTasks((currentTasks) => {
         const activeIndex = currentTasks.findIndex((t) => t.id === activeId.toString())
-        const activeTask = currentTasks[activeIndex]
+        if (activeIndex === -1) return currentTasks
+        const task = currentTasks[activeIndex]
         
-        // currentTasks zaten onDragOver içindeki KESİN KURALLAR (sınır kontrolleri)
-        // sayesinde DOĞRU FİZİKSEL SIRADA. Ekstra sort yapmıyoruz çünkü o eski .order
-        // değerlerini kullanıp kullanıcının yaptığı değişimi geri alarak donmaya sebep olur.
-        
-        // 1. Doğru yerine oturduktan sonraki indeksini bul
-        const columnTasks = currentTasks.filter(t => t.column_id === activeTask.column_id)
+        // Sütundaki görevleri fiziksel sırada al (onDragOver tarafından ayarlanmış)
+        const columnTasks = currentTasks.filter(t => t.column_id === task.column_id)
         const taskInColIndex = columnTasks.findIndex(t => t.id === activeId.toString())
 
-        // 2. Komşularına göre yeni order değerini hesapla
+        // Komşularına göre yeni order değerini hesapla
         const prevOrder = taskInColIndex > 0 ? columnTasks[taskInColIndex - 1].order : null
         const nextOrder = taskInColIndex < columnTasks.length - 1 ? columnTasks[taskInColIndex + 1].order : null
         const newOrder = calculateNewOrder(prevOrder, nextOrder)
 
-        // 3. Güncel order'ı state'e yaz
+        // Güncel order'ı state'e yaz
         const newTasks = [...currentTasks]
         newTasks[activeIndex] = {
           ...newTasks[activeIndex],
           order: newOrder
         }
 
-        // Arka planda DB'yi güncelle
-        updateTaskOrder(boardId, activeId.toString(), activeTask.column_id, newOrder)
+        // HER ZAMAN veritabanını güncelle (sütun değişse de değişmese de)
+        updateTaskOrder(boardId, activeId.toString(), task.column_id, newOrder)
 
         return newTasks
       })
