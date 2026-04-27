@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { login } from '../actions'
 
-export default async function LoginPage(props: { searchParams: Promise<{ error?: string }> }) {
-  const searchParams = await props.searchParams
+export default async function LoginPage(props: { searchParams: Promise<{ error?: string; message?: string }> }) {
+  const { error, message } = await props.searchParams
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white dark:bg-zinc-900 p-8 shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800">
@@ -45,9 +45,15 @@ export default async function LoginPage(props: { searchParams: Promise<{ error?:
             </div>
           </div>
 
-          {searchParams?.error && (
+          {error && (
             <div className="text-sm text-red-500 text-center bg-red-50 dark:bg-red-950/50 p-2 rounded">
-              {searchParams.error}
+              {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="text-sm text-emerald-500 text-center bg-emerald-50 dark:bg-emerald-950/50 p-2 rounded">
+              {message}
             </div>
           )}
 

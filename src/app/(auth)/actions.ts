@@ -48,9 +48,8 @@ export async function signup(formData: FormData) {
     redirect('/register?error=' + error.message)
   }
 
-  // Başarılı kayıtta dashboard'a yönlendir (veya email doğrulaması gerekiyorsa bildirim sayfasına)
-  revalidatePath('/dashboard')
-  redirect('/dashboard')
+  // Başarılı kayıtta e-posta doğrulaması için login sayfasına yönlendir
+  redirect('/login?message=Email doğrulaması için gelen kutunuzu kontrol edin.')
 }
 
 // Kullanıcı çıkışı
