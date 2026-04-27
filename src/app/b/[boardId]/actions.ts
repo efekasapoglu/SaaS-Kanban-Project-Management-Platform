@@ -11,8 +11,6 @@ export async function updateColumnOrder(boardId: string, columnId: string, newOr
   
   if (error) {
     console.error('Update column order error:', error)
-  } else {
-    revalidatePath(`/b/${boardId}`)
   }
 }
 
@@ -30,8 +28,6 @@ export async function updateTaskOrder(boardId: string, taskId: string, newColumn
 
   if (error) {
     console.error('Update task order error:', error)
-  } else {
-    revalidatePath(`/b/${boardId}`)
   }
 
   // Eğer sütun değiştiyse aktivite kaydı oluştur

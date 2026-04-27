@@ -36,9 +36,10 @@ interface Props {
 
 // Öncelik ağırlığı: Yüksek = 3, Orta = 2, Düşük = 1
 const getPriorityWeight = (priority: string | undefined | null) => {
-  if (priority === 'High') return 3;
-  if (priority === 'Medium') return 2;
-  if (priority === 'Low') return 1;
+  const p = priority?.toLowerCase();
+  if (p === 'high') return 3;
+  if (p === 'medium') return 2;
+  if (p === 'low') return 1;
   return 0;
 };
 
@@ -158,10 +159,31 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
             ...updatedTasks[activeIndex],
             column_id: tasks[overIndex].column_id
           }
+          
+          // Farklı sütuna geçerken, öncelik kuralını kontrol edelim
+          const weightA = getPriorityWeight(tasks[activeIndex].priority)
+          const weightO = getPriorityWeight(tasks[overIndex].priority)
+          if (weightA < weightO && activeIndex > overIndex) {
+              return updatedTasks // Düşük öncelikli, yükseğin üstüne çıkamaz
+          }
+          if (weightA > weightO && activeIndex < overIndex) {
+              return updatedTasks // Yüksek öncelikli, düşüğün altına inemez
+          }
+          
           return arrayMove(updatedTasks, activeIndex, overIndex)
         }
 
-        // Aynı sütunda Trello gibi anında görsel geri bildirim için arrayMove kullanıyoruz.
+        // Aynı sütunda
+        const weightA = getPriorityWeight(tasks[activeIndex].priority)
+        const weightO = getPriorityWeight(tasks[overIndex].priority)
+        
+        if (weightA !== weightO) {
+          // Öncelikler farklıysa görsel olarak yer değiştirmelerine İZİN VERME!
+          // Bu sayede Orta görev, Yüksek görevin sınırını geçemez.
+          return tasks
+        }
+
+        // Kendi öncelik grubundaysa Trello gibi anında yer değiştir
         return arrayMove(tasks, activeIndex, overIndex)
       })
     }
@@ -249,9 +271,7 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
         // Arka planda DB'yi güncelle
         updateTaskOrder(boardId, activeId.toString(), activeTask.column_id, newOrder)
 
-        // İşlem bittikten sonra "Öncelik > Order" kuralını zorla uygula.
-        // Eğer kullanıcı orta öncelikli bir kartı yükseklerin arasına sürüklediyse, 
-        // bu sort işlemi onu anında ait olduğu yere (ortaların en üstüne) geri çekecek!
+        // Drop işlemi bittiğinde güvenli olarak sıralamayı sabitle
         return newTasks.sort(sortTasks)
       })
     }
