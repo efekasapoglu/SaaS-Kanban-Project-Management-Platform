@@ -54,7 +54,7 @@ const sortTasks = (a: TaskType, b: TaskType) => {
 
 export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly }: Props) {
   const [columns, setColumns] = useState<ColumnType[]>(initialColumns)
-  const [tasks, setTasks] = useState<TaskType[]>(initialTasks)
+  const [tasks, setTasks] = useState<TaskType[]>(() => [...initialTasks].sort(sortTasks))
   
   const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null)
   const [activeTask, setActiveTask] = useState<TaskType | null>(null)
@@ -79,7 +79,7 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
   }
 
   if (initialTasks !== prevInitialTasks) {
-    setTasks(initialTasks)
+    setTasks([...initialTasks].sort(sortTasks))
     setPrevInitialTasks(initialTasks)
   }
 
@@ -158,13 +158,11 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
             ...updatedTasks[activeIndex],
             column_id: tasks[overIndex].column_id
           }
-          // Farklı sütuna geçerken arrayMove yapmıyoruz, sadece sütun ID'sini güncelliyoruz
-          return updatedTasks
+          return arrayMove(updatedTasks, activeIndex, overIndex)
         }
 
-        // Aynı sütun içindeyken arrayMove YAPMIYORUZ. Neden? Çünkü ekran zaten Priority > Order 
-        // şeklinde sıralanmış durumda. Eğer arrayMove yaparsak, dnd-kit'in beklentisiyle uyuşmuyor.
-        return tasks
+        // Aynı sütunda Trello gibi anında görsel geri bildirim için arrayMove kullanıyoruz.
+        return arrayMove(tasks, activeIndex, overIndex)
       })
     }
 
@@ -179,7 +177,7 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
           ...updatedTasks[activeIndex],
           column_id: overId.toString()
         }
-        return updatedTasks
+        return arrayMove(updatedTasks, activeIndex, activeIndex)
       })
     }
   }
@@ -231,10 +229,9 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
         const activeIndex = currentTasks.findIndex((t) => t.id === activeId.toString())
         const activeTask = currentTasks[activeIndex]
         
-        // KRİTİK: Sütundaki görevleri doğru sıralamada (Öncelik > Order) almalıyız
-        const columnTasks = currentTasks
-          .filter(t => t.column_id === activeTask.column_id)
-          .sort(sortTasks)
+        // currentTasks zaten onDragOver içindeki arrayMove sayesinde doğru fiziksel sırada.
+        // Komşuları bulmak için o anki fiziksel sırayı baz alıyoruz (Öncelik filtresi sonradan uygulanacak).
+        const columnTasks = currentTasks.filter(t => t.column_id === activeTask.column_id)
         
         const taskInColIndex = columnTasks.findIndex(t => t.id === activeId.toString())
 
@@ -252,7 +249,10 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
         // Arka planda DB'yi güncelle
         updateTaskOrder(boardId, activeId.toString(), activeTask.column_id, newOrder)
 
-        return newTasks
+        // İşlem bittikten sonra "Öncelik > Order" kuralını zorla uygula.
+        // Eğer kullanıcı orta öncelikli bir kartı yükseklerin arasına sürüklediyse, 
+        // bu sort işlemi onu anında ait olduğu yere (ortaların en üstüne) geri çekecek!
+        return newTasks.sort(sortTasks)
       })
     }
   }
@@ -308,7 +308,7 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
                 <Column
                   key={col.id}
                   column={col}
-                  tasks={filteredTasks.filter((t) => t.column_id === col.id).sort(sortTasks)}
+                  tasks={filteredTasks.filter((t) => t.column_id === col.id)}
                   isReadOnly={isReadOnly}
                   onTaskClick={(task: TaskType) => setSelectedTask(task)}
                   onTaskAdd={(newTask: TaskType) => setTasks((prev) => [...prev, newTask])}
