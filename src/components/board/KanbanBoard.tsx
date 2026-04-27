@@ -159,31 +159,11 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
             ...updatedTasks[activeIndex],
             column_id: tasks[overIndex].column_id
           }
-          
-          // Farklı sütuna geçerken, öncelik kuralını kontrol edelim
-          const weightA = getPriorityWeight(tasks[activeIndex].priority)
-          const weightO = getPriorityWeight(tasks[overIndex].priority)
-          if (weightA < weightO && activeIndex > overIndex) {
-              return updatedTasks // Düşük öncelikli, yükseğin üstüne çıkamaz
-          }
-          if (weightA > weightO && activeIndex < overIndex) {
-              return updatedTasks // Yüksek öncelikli, düşüğün altına inemez
-          }
-          
+          // Farklı sütuna geçerken serbestçe sürükle (Trello hızı için kısıtlama yok)
           return arrayMove(updatedTasks, activeIndex, overIndex)
         }
 
-        // Aynı sütunda
-        const weightA = getPriorityWeight(tasks[activeIndex].priority)
-        const weightO = getPriorityWeight(tasks[overIndex].priority)
-        
-        if (weightA !== weightO) {
-          // Öncelikler farklıysa görsel olarak yer değiştirmelerine İZİN VERME!
-          // Bu sayede Orta görev, Yüksek görevin sınırını geçemez.
-          return tasks
-        }
-
-        // Kendi öncelik grubundaysa Trello gibi anında yer değiştir
+        // Aynı sütunda serbestçe sürükle (Trello hızı için kısıtlama yok)
         return arrayMove(tasks, activeIndex, overIndex)
       })
     }
@@ -251,28 +231,31 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
         const activeIndex = currentTasks.findIndex((t) => t.id === activeId.toString())
         const activeTask = currentTasks[activeIndex]
         
-        // currentTasks zaten onDragOver içindeki arrayMove sayesinde doğru fiziksel sırada.
-        // Komşuları bulmak için o anki fiziksel sırayı baz alıyoruz (Öncelik filtresi sonradan uygulanacak).
-        const columnTasks = currentTasks.filter(t => t.column_id === activeTask.column_id)
+        // 1. Önce tüm görevleri katı kurala göre sırala (Öncelik > Order)
+        // Böylece kullanıcı yanlış (farklı öncelik) bir yere bıraksa bile anında doğru yerine kayar.
+        const sortedTasks = [...currentTasks].sort(sortTasks)
         
+        // 2. Doğru yerine oturduktan sonraki indeksini bul
+        const columnTasks = sortedTasks.filter(t => t.column_id === activeTask.column_id)
         const taskInColIndex = columnTasks.findIndex(t => t.id === activeId.toString())
 
-        // Spaced Integer Hesaplaması
+        // 3. Komşularına göre yeni order değerini hesapla
         const prevOrder = taskInColIndex > 0 ? columnTasks[taskInColIndex - 1].order : null
         const nextOrder = taskInColIndex < columnTasks.length - 1 ? columnTasks[taskInColIndex + 1].order : null
         const newOrder = calculateNewOrder(prevOrder, nextOrder)
 
-        const newTasks = [...currentTasks]
-        newTasks[activeIndex] = {
-          ...newTasks[activeIndex],
+        // 4. Güncel order'ı state'e yaz
+        const newTasks = [...sortedTasks]
+        const finalActiveIndex = newTasks.findIndex(t => t.id === activeId.toString())
+        newTasks[finalActiveIndex] = {
+          ...newTasks[finalActiveIndex],
           order: newOrder
         }
 
         // Arka planda DB'yi güncelle
         updateTaskOrder(boardId, activeId.toString(), activeTask.column_id, newOrder)
 
-        // Drop işlemi bittiğinde güvenli olarak sıralamayı sabitle
-        return newTasks.sort(sortTasks)
+        return newTasks
       })
     }
   }
