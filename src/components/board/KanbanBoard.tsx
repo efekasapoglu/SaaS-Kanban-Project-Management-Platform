@@ -4,7 +4,7 @@ import { useState, useMemo, useSyncExternalStore } from 'react'
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -83,7 +83,7 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 3, // Yanlışlıkla sürüklemeyi önlemek için 3px tolerans
+        distance: 5, // Daha kararlı bir başlangıç için 5px tolerans
       },
     }),
     useSensor(TouchSensor, {
@@ -275,7 +275,7 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={closestCenter}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
