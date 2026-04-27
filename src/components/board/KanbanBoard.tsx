@@ -252,24 +252,23 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
         const activeIndex = currentTasks.findIndex((t) => t.id === activeId.toString())
         const activeTask = currentTasks[activeIndex]
         
-        // 1. Önce tüm görevleri katı kurala göre sırala (Öncelik > Order)
-        // Böylece kullanıcı yanlış (farklı öncelik) bir yere bıraksa bile anında doğru yerine kayar.
-        const sortedTasks = [...currentTasks].sort(sortTasks)
+        // currentTasks zaten onDragOver içindeki KESİN KURALLAR (sınır kontrolleri)
+        // sayesinde DOĞRU FİZİKSEL SIRADA. Ekstra sort yapmıyoruz çünkü o eski .order
+        // değerlerini kullanıp kullanıcının yaptığı değişimi geri alarak donmaya sebep olur.
         
-        // 2. Doğru yerine oturduktan sonraki indeksini bul
-        const columnTasks = sortedTasks.filter(t => t.column_id === activeTask.column_id)
+        // 1. Doğru yerine oturduktan sonraki indeksini bul
+        const columnTasks = currentTasks.filter(t => t.column_id === activeTask.column_id)
         const taskInColIndex = columnTasks.findIndex(t => t.id === activeId.toString())
 
-        // 3. Komşularına göre yeni order değerini hesapla
+        // 2. Komşularına göre yeni order değerini hesapla
         const prevOrder = taskInColIndex > 0 ? columnTasks[taskInColIndex - 1].order : null
         const nextOrder = taskInColIndex < columnTasks.length - 1 ? columnTasks[taskInColIndex + 1].order : null
         const newOrder = calculateNewOrder(prevOrder, nextOrder)
 
-        // 4. Güncel order'ı state'e yaz
-        const newTasks = [...sortedTasks]
-        const finalActiveIndex = newTasks.findIndex(t => t.id === activeId.toString())
-        newTasks[finalActiveIndex] = {
-          ...newTasks[finalActiveIndex],
+        // 3. Güncel order'ı state'e yaz
+        const newTasks = [...currentTasks]
+        newTasks[activeIndex] = {
+          ...newTasks[activeIndex],
           order: newOrder
         }
 
