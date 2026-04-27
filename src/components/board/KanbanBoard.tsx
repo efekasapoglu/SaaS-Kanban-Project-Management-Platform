@@ -159,11 +159,32 @@ export function KanbanBoard({ boardId, initialColumns, initialTasks, isReadOnly 
             ...updatedTasks[activeIndex],
             column_id: tasks[overIndex].column_id
           }
-          // Farklı sütuna geçerken serbestçe sürükle (Trello hızı için kısıtlama yok)
+          
+          // Farklı sütuna geçerken KESİN KURAL: Öncelik sınırını geçemez
+          const weightA = getPriorityWeight(tasks[activeIndex].priority)
+          const weightO = getPriorityWeight(tasks[overIndex].priority)
+          
+          if (weightA < weightO && activeIndex > overIndex) {
+              return updatedTasks // Orta, Yükseğin üstüne çıkamaz
+          }
+          if (weightA > weightO && activeIndex < overIndex) {
+              return updatedTasks // Yüksek, Ortanın altına inemez
+          }
+          
           return arrayMove(updatedTasks, activeIndex, overIndex)
         }
 
-        // Aynı sütunda serbestçe sürükle (Trello hızı için kısıtlama yok)
+        // Aynı sütun KESİN KURAL: Öncelik sınırını geçemez
+        const weightA = getPriorityWeight(tasks[activeIndex].priority)
+        const weightO = getPriorityWeight(tasks[overIndex].priority)
+        
+        if (weightA !== weightO) {
+          // Eğer öncelikler farklıysa, yer değiştirmelerine KESİNLİKLE izin verme!
+          // Bu tam olarak "Orta, Yükseğin üstüne çıkamaz" kuralıdır.
+          return tasks
+        }
+
+        // Kendi öncelik grubundaysa (örn: iki Orta) Trello gibi anında yer değiştir
         return arrayMove(tasks, activeIndex, overIndex)
       })
     }
